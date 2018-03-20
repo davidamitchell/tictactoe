@@ -1,0 +1,200 @@
+<html>
+<head>
+  <style>
+   * {
+     padding: 0px;
+     margin: 0px;
+   }
+
+   #board, #board-debug {
+     display: table;
+     border-radius: 1px;
+     border: 1px solid #A9A8A8;
+     width: 220px;
+     height: 220px;
+     background: #E2E2E2;
+     margin: 50px;
+   }
+   .cell{
+     border-radius: 1px;
+     border: 1px solid white;
+     padding: 0px;
+     text-align: center;
+     vertical-align: middle;
+     width: 70px;
+     font-size: 3em;
+     color: brown;
+     overflow: hidden;
+     font-family: 'Helvetica', 'Arial', sans-serif;
+   }
+   .row{
+     display: table-row;
+     height: 70px;
+   }
+   .col{
+     display: table-cell;
+   }
+   .o{
+
+   }
+   .x{
+
+   }
+   .win{
+     background: lightgreen;
+   }
+  </style>
+</head>
+<body>
+  <div id="board">
+    <div class="row">
+      <div id="1_1" class="cell col"></div>
+      <div id="1_2" class="cell col"></div>
+      <div id="1_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="2_1" class="cell col"></div>
+      <div id="2_2" class="cell col"></div>
+      <div id="2_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="3_1" class="cell col"></div>
+      <div id="3_2" class="cell col"></div>
+      <div id="3_3" class="cell col"></div>
+    </div>
+  </div>
+
+  <!-- <div id="board-debug">
+    <div class="row">
+      <div id="1_1" class="cell col"></div>
+      <div id="1_2" class="cell col"></div>
+      <div id="1_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="2_1" class="cell col"></div>
+      <div id="2_2" class="cell col"></div>
+      <div id="2_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="3_1" class="cell col"></div>
+      <div id="3_2" class="cell col"></div>
+      <div id="3_3" class="cell col"></div>
+    </div>
+  </div> -->
+</body>
+<script>
+  var mark = function(e) {
+    if (e.target.textContent === ''){
+      if (xturn){
+        e.target.textContent = 'x';
+        xturn = !xturn;
+      } else {
+        e.target.textContent = 'o';
+        xturn = !xturn;
+      }
+    }
+    checkWin(e);
+
+  };
+
+  class GameBoard {
+    constructor() {
+      this.rowCount = 3;
+      this.colCount = 3;
+
+      this.xChar = "X";
+      this.oChar = "O";
+
+      this.currentState = [];
+      for(var i=0; i<this.rowCount; i++) {
+          this.currentState[i] = new Array(this.colCount);
+      }
+    }
+
+    markAs(x,y,char){
+      var marked = false;
+      if(!this.currentState[x][y]){
+        this.currentState[x][y] = char;
+        marked = true;
+      }
+      return marked;
+    }
+    markAsX(x,y){
+      return markAs(x,y,this.xChar);
+    }
+
+    markAsY(x,y){
+      return markAs(x,y,this.xChar);
+    }
+
+    draw(board_id){
+      var x, y;
+      for (x = 0; x < this.currentState.length; ++x) {
+          for (y = 0; y < this.currentState[i].length; ++y) {
+             document.getElementById(x'_'+y) = !this.currentState[x][y] ? "" : this.currentState[x][y];
+          }
+      }
+    }
+  }
+  var checkWin = function(e) {
+    var cols = document.getElementsByClassName("col");
+    var vals = [];
+    vals[0] = [];
+    vals[1] = [];
+    vals[2] = [];
+    for (var i = 0; i < cols.length; i++) {
+      console.log(cols[i].id,cols[i].id.split('_'));
+      var c = [];
+      switch(cols[i].id.split('_')[0]){
+        case '1':
+          vals[0].push(cols[i].textContent);
+          break;
+        case '2':
+          vals[1].push(cols[i].textContent);
+          break;
+        case '3':
+          vals[2].push(cols[i].textContent);
+          break;
+      }
+    }
+
+    console.log(vals);
+    // check vertical
+    for(i=0; i<vals.length; ++i){
+      if(vals[i][2] !== '' && vals[i][0] === vals[i][1] && vals[i][1] === vals[i][2]) {
+        for(var j = 1; j <= 3; ++j){
+          document.getElementById((1+i)+'_'+j).classList.add('win');
+          win();
+        }
+      }
+    }
+    // check horizontal
+    for(i=0; i<vals.length; ++i){
+      if(vals[0][i] !== '' && vals[0][i] === vals[1][i] && vals[1][i] === vals[2][i]) {
+        for(var j = 1; j <= 3; ++j){
+          document.getElementById(j+'_'+(1+i)).classList.add('win');
+
+          win();
+        }
+      }
+    }
+  };
+
+
+  window.onload = function() {
+    var board = new GameBoard();
+    board.draw();
+  };
+  var win = function(){
+    var cols = document.getElementsByClassName("col");
+    for (var i = 0; i < cols.length; i++) {
+        cols[i].removeEventListener('click', mark, false);
+    }
+  };
+  var xturn = true;
+  var cols = document.getElementsByClassName("col");
+  for (var i = 0; i < cols.length; i++) {
+      cols[i].addEventListener('click', mark, false);
+  }
+</script>
+</html>

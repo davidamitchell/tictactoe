@@ -1,0 +1,726 @@
+<html>
+<head>
+  <style>
+   * {
+     padding: 0px;
+     margin: 0px;
+   }
+   button{
+    color: #fff;
+    background-color: #6496c8;
+    text-shadow: -1px 1px #417cb8;
+    border: none;
+    padding: 10px;
+    display: inline-block;
+    margin: 10px;
+    padding: 15px 10px;
+    font-size: 22px;
+    font-family: "Bitter",serif;
+    vertical-align: bottom;
+    appearance: none;
+    box-shadow: none;
+    border-radius: 0;
+   }
+   .summary, .game, .debug {
+     display: inline-block;
+     float: left;
+   }
+   #board, #board-debug {
+     display: table;
+     border-radius: 1px;
+     border: 1px solid #A9A8A8;
+     width: 220px;
+     height: 220px;
+     background: #E2E2E2;
+     margin-left: 50px;
+     margin-bottom: 50px;
+   }
+   #board-debug {
+     font-size: .5em;
+     display: none;
+   }
+   .cell{
+     border-radius: 1px;
+     border: 1px solid white;
+     padding: 0px;
+     text-align: center;
+     vertical-align: middle;
+     width: 70px;
+     font-size: 3em;
+     color: brown;
+     overflow: hidden;
+     font-family: 'Helvetica', 'Arial', sans-serif;
+   }
+   .row{
+     display: table-row;
+     height: 70px;
+   }
+   .col{
+     display: table-cell;
+   }
+   .o{
+
+   }
+   .x{
+
+   }
+   .win{
+     background: lightgreen;
+   }
+   .cwrap{
+     padding: 2px;
+     margin-top: 20px;
+     font-size: 1.3em;
+     width: 200px;
+     border: 1px solid #bbb;
+     border-radius: 3px;
+   }
+   .counter{
+     padding: 10px;
+     text-align: right;
+     display: inline-block;
+   }
+  </style>
+</head>
+<body>
+  <section class="summary">
+    <div class="cwrap">
+      <span class="counter">X Wins: </span><span id="xwins" class="counter">0</span>
+    </div>
+    <div class="cwrap">
+      <span class="counter">O Wins: </span><span id="owins" class="counter">0</span>
+    </div>
+    <div class="cwrap">
+      <span class="counter">Draws: </span><span id="draws" class="counter">0</span>
+    </div>
+    <div class="cwrap">
+      <span class="counter">Win rate: </span><span id="wrate" class="counter">0</span>
+    </div>
+  </section>
+  <section class="game">
+    <div id="board">
+      <div class="row">
+        <div id="0_0" class="cell col"></div>
+        <div id="0_1" class="cell col"></div>
+        <div id="0_2" class="cell col"></div>
+      </div>
+      <div class="row">
+        <div id="1_0" class="cell col"></div>
+        <div id="1_1" class="cell col"></div>
+        <div id="1_2" class="cell col"></div>
+      </div>
+      <div class="row">
+        <div id="2_0" class="cell col"></div>
+        <div id="2_1" class="cell col"></div>
+        <div id="2_2" class="cell col"></div>
+      </div>
+    </div>
+    <button id="reset_btn">reset</button>
+    <button id="auto_btn">auto play</button>
+    <button id="learn_btn">learn</button>
+  </section>
+
+  <section class="debug">
+    <div id="board-debug">
+      <div class="row">
+        <div id="d0_0" class="cell col"></div>
+        <div id="d0_1" class="cell col"></div>
+        <div id="d0_2" class="cell col"></div>
+      </div>
+      <div class="row">
+        <div id="d1_0" class="cell col"></div>
+        <div id="d1_1" class="cell col"></div>
+        <div id="d1_2" class="cell col"></div>
+      </div>
+      <div class="row">
+        <div id="d2_0" class="cell col"></div>
+        <div id="d2_1" class="cell col"></div>
+        <div id="d2_2" class="cell col"></div>
+      </div>
+    </div>
+  </section>
+</body>
+<script>
+  "use strict";
+
+  class BoardSymmetry {
+    constructor(){
+
+    }
+
+
+    rotate90(a){
+      return this.rotate(a);
+    }
+    rotate180(a){
+      return this.rotate(this.rotate(a));
+    }
+    rotate270(a){
+      return this.rotate(this.rotate(this.rotate(a)));
+    }
+    rotate(a){
+      // return [a[2],a[5],a[8],a[1],a[4],a[7],a[0],a[3],a[3]];
+      // return a;
+
+      var a1 =[];
+      a1 = a.slice();
+      var l = a1.pop();
+      a1.push(a1.shift());
+      a1.push(a1.shift());
+      a1.push(l);
+      return a1;
+    }
+  }
+
+  class Q {
+    constructor(){
+      this.q = {};
+      this.rate = 0.5;
+    }
+    initValues(){
+      var i, a=[];
+      for(i=0;i<9;++i){
+        // a.push(this.getRandomFloat(0.2,0.8));
+        a.push(this.getRandomFloat(0.4,0.6));
+      }
+      return a;
+    }
+    qvalues(state){
+      var stateString = state.toString();
+      console.log('getting qvalues for: ', stateString, 'found', !!this.q[stateString])
+      var qvals;
+      if(!!this.q[stateString]){
+        qvals = this.q[stateString];
+      } else {
+        qvals = this.initValues();
+        this.q[stateString] = qvals;
+      }
+      return qvals;
+    }
+
+    // giveReward(reward, state, move, prevState, prevMove){
+    //   if(prevState){
+    //     var stateString = state.toString();
+    //     var qvals = this.qvalues(state);
+    //     var p_qvals = this.qvalues(prevState);
+    //     console.log('========', reward, qvals[move],p_qvals[prevMove])
+    //     var change = (reward + qvals[move] - p_qvals[prevMove])
+    //     qvals[move] = qvals[move] + this.rate*change
+    //
+    //     qvals[move] = qvals[move] + reward;
+    //     console.log('giveReward qvals', qvals, stateString, change)
+    //     this.q[stateString] = qvals;
+    //   }
+    // }
+
+
+    getRandomFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+  }
+
+  class AI {
+    constructor(side, speed){
+      // x or o as a string
+      this.side = side;
+      this.speed = speed;
+      this.q = new Q();
+      this.lastMove = undefined;
+      this.lastState = undefined;
+    }
+
+    // for Q
+    // O - 0
+    // X - 1
+    // _ - 2
+    //
+    translate(index){
+      var a = [[0,0],[0,1],[0,2],[1,2],[2,2],[2,1],[2,0],[1,0],[1,1]];
+      return a[index];
+    }
+
+    rtranslate(xy){
+      var a = [[0,0],[0,1],[0,2],[1,2],[2,2],[2,1],[2,0],[1,0],[1,1]];
+      for (var i=0; i < a.length; ++i){
+        if(a[i][0] == xy[0] && a[i][1] == xy[1]){
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    move(board, markit){
+      console.log('starting ai move', 'board state', board.getState())
+      var openCells = board.getOpen();
+      var state = board.getState();
+      this.lastState = state;
+      var aiWin = false;
+      if(openCells.length>0){
+        console.log('pre',this.q.qvalues(state))
+        var qvals = this.q.qvalues(state);
+
+        for(var i = 0; i < qvals.length; ++i){
+          if(!openCells[i]){
+            qvals[i] = qvals[i]-1000;
+          }
+        }
+        console.log('post',this.q.qvalues(state))
+
+        var max = this.max(qvals);
+        var index = qvals.indexOf(max);
+        var xy = this.translate(index);
+        //console.log('index   ', index);
+        //console.log('xy   ', xy);
+        var x = xy[0];
+        var y = xy[1];
+        if(markit){
+          console.log('moving to', x,y,'max ',max, index, qvals, );
+          board.drawDebug();
+          board.markAs(x, y, this.side);
+          board.draw();
+
+          var w = board.checkWin();
+          var n,m;
+          if(w.win){
+            // board.drawWin(w.cells);
+            aiWin = true;
+          }
+        }
+        this.lastMove = index;
+        this.lastState = state;
+      }
+      return {aiwin: aiWin, x: x, y: y};
+    }
+    max(a){
+      return Math.max.apply(null, a);
+    }
+    min(a){
+      return Math.min.apply(null, a);
+    }
+    getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
+    getRandomFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+  }
+
+  class Matrix {
+    // constructor(){
+    //   var args = Array.prototype.slice.call(arguments);
+    //   this.matrix = this.make(args);
+    //   this.dimCount = args.length;
+    //   //console.log(JSON.stringify(this.matrix, null, 4));
+    //   return this;
+    // }
+    constructor(n,m,j){
+      if(j===undefined){
+        this.matrix = this.make([n,m]);
+        this.dimCount = 2;
+      } else {
+        this.matrix = this.make([n,m,j]);
+        this.dimCount = 3;
+      }
+    }
+
+    get(n,m){
+      return this.matrix[n][m];
+    }
+
+    set(n,m,val){
+      this.matrix[n][m] = val;
+    }
+
+    row(n){
+      return this.matrix[n];
+    }
+
+    col(m){
+      var r = [];
+      for(var i=0; i<this.matrix.length; i++) {
+        r.push(this.matrix[i][m]);
+      }
+      return r;
+    }
+
+    make(dims){
+      var dim, ret = [];
+      if(dims.length === 1){
+        for(var i=0; i<dims[0]; i++) {
+          ret[i] = undefined;
+        }
+      } else {
+        var rest = dims.slice(1);
+        for (var i=0; i < dims[0]; i++) {
+          ret.push(this.make(rest));
+        }
+      }
+      return ret;
+    }
+  }
+
+  class GameBoard {
+    constructor() {
+      this.win = false;
+
+      this.rowCount = 3;
+      this.colCount = 3;
+
+      this.xChar = "X";
+      this.oChar = "O";
+
+      this.currentState = new Matrix(this.rowCount, this.colCount);
+      var x,y;
+      for (x = 0; x < this.rowCount; ++x) {
+        for (y = 0; y < this.colCount; ++y) {
+          document.getElementById(x+'_'+y).classList.remove('win');
+        }
+      }
+    }
+
+    getState(){
+      var state = this.currentState;
+      // top_left, top_m, top_right, right_m, right_bottom, bottom_m, bottom_left, left_m, middle
+      var stateArray = [state.get(0,0)
+                       ,state.get(0,1)
+                       ,state.get(0,2)
+                       ,state.get(1,2)
+                       ,state.get(2,2)
+                       ,state.get(2,1)
+                       ,state.get(2,0)
+                       ,state.get(1,0)
+                       ,state.get(1,1)];
+      return stateArray;
+    }
+
+    getOpen(){
+      var x,y,empty = [];
+      if(!this.currentState.get(0,0)){empty.push(true);} else {empty.push(false);} //tl
+      if(!this.currentState.get(0,1)){empty.push(true);} else {empty.push(false);} //tm
+      if(!this.currentState.get(0,2)){empty.push(true);} else {empty.push(false);} //tr
+      if(!this.currentState.get(1,2)){empty.push(true);} else {empty.push(false);} //rm
+      if(!this.currentState.get(2,2)){empty.push(true);} else {empty.push(false);} //rb
+      if(!this.currentState.get(2,1)){empty.push(true);} else {empty.push(false);} //bm
+      if(!this.currentState.get(2,0)){empty.push(true);} else {empty.push(false);} //bl
+      if(!this.currentState.get(1,0)){empty.push(true);} else {empty.push(false);} //lm
+      if(!this.currentState.get(1,1)){empty.push(true);} else {empty.push(false);} //mm
+      return empty;
+    }
+
+    anyLeft(){
+      var al = false;
+      var open = this.getOpen();
+      for(var i=0; i < open.length; ++i){
+        if(open[i]){
+          al = true;
+          break;
+        }
+      }
+      return al;
+    }
+
+    markAs(x,y,char){
+      var marked = false;
+      if(!this.currentState.get(x,y)){
+        this.currentState.set(x,y,char);
+        marked = true;
+      }
+      return marked;
+    }
+    markAsX(x,y){
+      return this.markAs(x,y,this.xChar);
+    }
+
+    markAsO(x,y){
+      return this.markAs(x,y,this.oChar);
+    }
+
+    arrayEqual(theArray){
+      return !!theArray.reduce(function(a, b){ return (a === b) ? a : NaN; });
+    }
+
+    checkWin(){
+      var cells = [], x = 0, y = 0, win = false;
+      for (x = 0; x < this.rowCount; ++x) {
+        if(this.arrayEqual(this.currentState.row(x))){
+          this.win = true;
+          return {win: true, cells:[[x,0],[x,1],[x,2]], winner: this.currentState.get(x,0)};
+        }
+      }
+
+      for (y = 0; y < this.colCount; ++y) {
+        if(this.arrayEqual(this.currentState.col(y))){
+          this.win = true;
+          return {win: true, cells:[[0,y],[1,y],[2,y]], winner: this.currentState.get(0,y)};
+        }
+      }
+
+      var backslash = []
+      for (y = 0; y < this.colCount; ++y) {
+        backslash.push(this.currentState.get(y,y));
+      }
+      if(this.arrayEqual(backslash)){
+        this.win = true;
+        return {win: true, cells:[[0,0],[1,1],[2,2]], winner: this.currentState.get(0,0)};
+      }
+
+      //0,2 1,1 2,0
+      var x = 0
+      var forwardslash = []
+      for (y = this.colCount-1; y >= 0; --y) {
+        forwardslash.push(this.currentState.get(x++,y));
+      }
+      if(this.arrayEqual(forwardslash)){
+        this.win = true;
+        return {win: true, cells:[[0,2],[1,1],[2,0]], winner: this.currentState.get(2,2)};
+      }
+      this.win = false;
+      return {win: false, cells:[], winner: undefined}
+    }
+
+    drawWin(cells){
+      for(var i = 0; i < cells.length; ++i){
+        document.getElementById(cells[i][0]+'_'+cells[i][1]).classList.add('win');
+      }
+    }
+
+    draw(board_id){
+      var x, y;
+      for (x = 0; x < this.rowCount; ++x) {
+          for (y = 0; y < this.colCount; ++y) {
+            document.getElementById(x+'_'+y).textContent = !this.currentState.get(x,y) ? "" : this.currentState.get(x,y);
+          }
+      }
+    }
+
+    drawDebug(){
+      function normalize(min, max) {
+          var delta = max - min;
+          return function (val) {
+              return (val - min) / delta;
+          };
+      }
+      var x, y;
+      var qv = ai.q.qvalues(board.getState());
+      var max = Math.max.apply(null, qv);
+      var min = Math.min.apply(null, qv);
+      var qvn = qv.map(normalize(max, min))
+      console.log('qvn',qvn)
+      var xy = [null, null];
+      for (x = 0; x < this.rowCount; ++x) {
+          for (y = 0; y < this.colCount; ++y) {
+            xy = [x,y];
+            var v = parseInt(qvn[ai.rtranslate(xy)] * 100) / 100
+            document.getElementById('d'+x+'_'+y).textContent = v;
+            document.getElementById('d'+x+'_'+y).style.backgroundColor = 'rgba(255,0,0,'+v+')';
+          }
+      }
+    }
+  }
+  var board, ai, ai2, sym;
+
+  window.onload = function() {
+    var xwins = document.getElementById('xwins');
+    var owins = document.getElementById('owins');
+    var draws = document.getElementById('draws');
+    var wrate = document.getElementById('wrate');
+
+    board = new GameBoard();
+    sym = new BoardSymmetry();
+
+    ai = new AI('O', 200);
+    // ai2 = new AI('X', 200);
+    // board.draw();
+    var gameOver = function(){
+      wrate.textContent = parseInt(parseFloat(owins.textContent) / parseFloat(xwins.textContent) * 1000) / 1000;
+      ai.lastState = undefined;
+      ai.lastMove = undefined;
+      var cols = document.getElementsByClassName("col");
+      console.log('-----------------',cols)
+      for (var i = 0; i < cols.length; i++) {
+          cols[i].removeEventListener('click', humanMark, false);
+      }
+    };
+    var humanMark = function(e){
+      var xy = e.target.id.split('_');
+      var x,y;
+      x = parseInt(xy[0]);
+      y = parseInt(xy[1]);
+      mark(x,y);
+    }
+    var mark = function(x,y) {
+      console.log('starting mark---')
+      var marked = false;
+
+      // capture the state of the board after the AI's lastMove
+      var prevState = ai.lastState;
+
+      // capture the last move of the AI
+      var prevMove = ai.lastMove;
+
+      marked = board.markAsX(x,y);
+      if(marked){
+        board.draw();
+        var w = board.checkWin();
+        if(w.win){
+          board.drawWin(w.cells);
+
+          if (prevState){
+            var stateString = prevState.toString();
+            var qvals = ai.q.qvalues(prevState);
+            var reward = -100.0
+            var change = (reward + 0.0 - qvals[prevMove]);
+            qvals[prevMove] = qvals[prevMove] + ai.q.rate*change;
+            ai.q[stateString] = qvals;
+            ai.q[sym.rotate90(prevState).toString()] = sym.rotate90(qvals);
+            ai.q[sym.rotate180(prevState).toString()] = sym.rotate180(qvals);
+            ai.q[sym.rotate270(prevState).toString()] = sym.rotate270(qvals);
+
+          }
+
+          gameOver();
+          xwins.textContent = parseInt(xwins.textContent) + 1;
+        } else{
+          console.log('starting next move--- prevState', prevState)
+          if(board.anyLeft()){
+            // the last move of the AI wasn't a loser
+
+            if (prevState){
+              // find the next best move from the state after the
+              // AIs move
+              var next_qvals = ai.q.qvalues(board.getState());
+              var openCells = board.getOpen();
+              for(var i = 0; i < next_qvals.length; ++i){
+                if(!openCells[i]){
+                  next_qvals[i] = next_qvals[i]-1000;
+                }
+              }
+
+              // Q(s1, a1) = Q(s1, a1) + learning_rate * (r + discount_factor * max Q(s2, _) - Q(s1, a1))
+              var bestNextMove = next_qvals.indexOf(ai.max(next_qvals));
+
+              var stateString = prevState.toString();
+              var qvals = ai.q.qvalues(prevState);
+              var reward = 0.0
+              var change = (reward + (0.9 * next_qvals[bestNextMove]) - qvals[prevMove]);
+              qvals[prevMove] = qvals[prevMove] + ai.q.rate*change;
+              ai.q[stateString] = qvals;
+              ai.q[sym.rotate90(prevState).toString()] = sym.rotate90(qvals);
+              ai.q[sym.rotate180(prevState).toString()] = sym.rotate180(qvals);
+              ai.q[sym.rotate270(prevState).toString()] = sym.rotate270(qvals);
+
+              console.log('current state', board.getState())
+              console.log('next move', stateString, qvals)
+              console.log('next best', bestNextMove)
+              console.log('rotated90', stateString, sym.rotate90(prevState).toString())
+            }
+
+
+            // did the ai move make it a winner
+            console.log('ai about to move---')
+            var r = ai.move(board, true);
+            if(r.aiwin){
+
+              var stateString = prevState.toString();
+              var qvals = ai.q.qvalues(prevState);
+              var reward = 10.0
+              var change = (reward + 0.0 - qvals[ai.lastMove]);
+              qvals[ai.lastMove] = qvals[ai.lastMove] + ai.q.rate*change;
+              ai.q[stateString] = qvals;
+              ai.q[sym.rotate90(prevState).toString()] = sym.rotate90(qvals);
+              ai.q[sym.rotate180(prevState).toString()] = sym.rotate180(qvals);
+              ai.q[sym.rotate270(prevState).toString()] = sym.rotate270(qvals);
+
+              console.log('AI wins', stateString, qvals)
+              var w = board.checkWin();
+              board.drawWin(w.cells);
+              owins.textContent = parseInt(owins.textContent) + 1;
+              gameOver();
+            } else {
+
+
+            }
+          // no more left stalemate
+          } else {
+              var stateString = prevState.toString();
+              var qvals = ai.q.qvalues(prevState);
+              var reward = -1.0
+              var change = (reward + 0.0 - qvals[ai.lastMove]);
+              qvals[ai.lastMove] = qvals[ai.lastMove] + ai.q.rate*change;
+              ai.q[stateString] = qvals;
+              ai.q[sym.rotate90(prevState).toString()] = sym.rotate90(qvals);
+              ai.q[sym.rotate180(prevState).toString()] = sym.rotate180(qvals);
+              ai.q[sym.rotate270(prevState).toString()] = sym.rotate270(qvals);
+
+              console.log('Stalemate', stateString, qvals)
+
+              draws.textContent = parseInt(draws.textContent) + 1;
+              gameOver();
+
+          }
+        }
+
+      }
+
+
+    };
+
+    var reset = function(e){
+      board = new GameBoard();
+      //console.log(ai);
+      board.draw();
+      var cols = document.getElementsByClassName("col");
+      for (var i = 0; i < cols.length; i++) {
+          cols[i].addEventListener('click', humanMark, false);
+      }
+    };
+
+    var auto = function(e){
+      board = new GameBoard();
+      board.draw();
+      var open = board.getOpen();
+      var cells = [];
+      while(board.anyLeft() && !board.win){
+        for(var i = 0; i < open.length; ++i){
+          if(open[i]){
+            cells.push(ai.translate(i));
+          }
+        }
+        var index = ai.getRandomInt(0,cells.length);
+        mark(cells[index][0],cells[index][1]);
+
+        // var r = ai2.move(board);
+        // mark(r.x, r.y);
+      }
+
+    }
+
+    var learn = function(){
+      for(var i = 0; i<5000; i++){setTimeout(function(){document.getElementById('auto_btn').click();}, 1*i);}
+    }
+    // var learn = function(){
+    //   for(var i = 0; i<1500; i++){
+    //     setTimeout(function(){
+    //       document.getElementById('auto_btn').click();
+    //     }, 1*i);
+    //   }
+    // }
+    var xturn = true;
+    var cols = document.getElementsByClassName("col");
+    for (var i = 0; i < cols.length; i++) {
+        cols[i].addEventListener('click', humanMark, false);
+    }
+    var resetButton = document.getElementById('reset_btn');
+    resetButton.addEventListener('click', reset, false);
+
+    var autoButton = document.getElementById('auto_btn');
+    autoButton.addEventListener('click', auto, false);
+
+    var learnButton = document.getElementById('learn_btn');
+    learnButton.addEventListener('click', learn, false);
+  };
+
+
+</script>
+</html>

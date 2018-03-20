@@ -1,0 +1,442 @@
+<html>
+<head>
+  <style>
+   * {
+     padding: 0px;
+     margin: 0px;
+   }
+   button{
+    color: #fff;
+    background-color: #6496c8;
+    text-shadow: -1px 1px #417cb8;
+    border: none;
+    padding: 10px;
+    display: inline-block;
+    margin: 10px;
+    padding: 15px 10px;
+    font-size: 22px;
+    font-family: "Bitter",serif;
+    vertical-align: bottom;
+    appearance: none;
+    box-shadow: none;
+    border-radius: 0;
+   }
+   #board, #board-debug {
+     display: table;
+     border-radius: 1px;
+     border: 1px solid #A9A8A8;
+     width: 220px;
+     height: 220px;
+     background: #E2E2E2;
+     margin: 50px;
+   }
+   .cell{
+     border-radius: 1px;
+     border: 1px solid white;
+     padding: 0px;
+     text-align: center;
+     vertical-align: middle;
+     width: 70px;
+     font-size: 3em;
+     color: brown;
+     overflow: hidden;
+     font-family: 'Helvetica', 'Arial', sans-serif;
+   }
+   .row{
+     display: table-row;
+     height: 70px;
+   }
+   .col{
+     display: table-cell;
+   }
+   .o{
+
+   }
+   .x{
+
+   }
+   .win{
+     background: lightgreen;
+   }
+  </style>
+</head>
+<body>
+
+  <div id="board">
+    <div class="row">
+      <div id="0_0" class="cell col"></div>
+      <div id="0_1" class="cell col"></div>
+      <div id="0_2" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="1_0" class="cell col"></div>
+      <div id="1_1" class="cell col"></div>
+      <div id="1_2" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="2_0" class="cell col"></div>
+      <div id="2_1" class="cell col"></div>
+      <div id="2_2" class="cell col"></div>
+    </div>
+  </div>
+  <button id="reset_btn">reset</button>
+
+  <!-- <div id="board-debug">
+    <div class="row">
+      <div id="1_1" class="cell col"></div>
+      <div id="1_2" class="cell col"></div>
+      <div id="1_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="2_1" class="cell col"></div>
+      <div id="2_2" class="cell col"></div>
+      <div id="2_3" class="cell col"></div>
+    </div>
+    <div class="row">
+      <div id="3_1" class="cell col"></div>
+      <div id="3_2" class="cell col"></div>
+      <div id="3_3" class="cell col"></div>
+    </div>
+  </div> -->
+</body>
+<script>
+  "use strict";
+
+  class boardSymmetry {
+    constructor(){
+
+    }
+
+
+    rotate90(a){
+      return rotate(a);
+    }
+    rotate180(a){
+      return rotate(rotate(a));
+    }
+    rotate270(a){
+      return rotate(rotate(rotate(a)));
+    }
+    rotate(a){
+      var a1 =[];
+      a1.from(a);
+      a1.push(a1.shift());
+      a1.push(a1.shift());
+      return a1;
+    }
+  }
+
+  class Q {
+    constructor(){
+      this.q = {};
+    }
+    initValues(){
+      var i, a=[];
+      for(i=0;i<9;++i){
+        a.push(getRandomFloat());
+      }
+      return a;
+    }
+    qvalues(state){
+      var stateString = state.toString();
+      var qvals;
+      if(this.q[stateString]){
+        qvals = this.q[stateString];
+      } else {
+        qvals = initValues()
+      }
+    }
+
+    getRandomFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+  }
+
+  class AI {
+    constructor(side, speed){
+      // x or o as a string
+      this.side = side;
+      this.speed = speed;
+      this.q = new Matrix(3,3,3).matrix;
+      this.rate = 2.0;
+      var i,j,k;
+      for (i = 0; i < 3; ++i) {
+          for (j = 0; j < 3; ++j) {
+            for (k = 0; k < 3; ++k) {
+              this.q[i][j][k] = this.getRandomFloat(0,1);
+            }
+          }
+      }
+      console.log(JSON.stringify(this.q));
+
+    }
+    // for Q
+    // O - 0
+    // X - 1
+    // _ - 2
+    //
+    move(board){
+      var openCells = board.getOpen();
+      var over = false;
+      if(openCells.length>0){
+        var openVals = [];
+        for(var k=0; k<openCells.length; ++k){
+          openVals.push(this.q[openCells[k][0]][openCells[k][1]][1]);
+        }
+        var max = this.max(openVals);
+        var index = openVals.indexOf(max);
+        var x = openCells[index][0];
+        var y = openCells[index][1];
+        board.markAs(x, y, this.side);
+        board.draw();
+
+        var w = board.checkWin();
+        var n,m;
+        var sign = -1;
+        if(w.win){
+          sign = 3;
+          board.drawWin(w.cells);
+          over = true;
+        }
+
+        this.q[x][y][1] = this.q[x][y][1] + (sign * this.rate);
+
+        console.log(JSON.stringify(this.q));
+      }
+      return over;
+    }
+    max(a){
+      return Math.max.apply(null, a);
+    }
+    min(a){
+      return Math.min.apply(null, a);
+    }
+    getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
+    getRandomFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+  }
+
+  class Matrix {
+    // constructor(){
+    //   var args = Array.prototype.slice.call(arguments);
+    //   this.matrix = this.make(args);
+    //   this.dimCount = args.length;
+    //   console.log(JSON.stringify(this.matrix, null, 4));
+    //   return this;
+    // }
+    constructor(n,m,j){
+      if(j===undefined){
+        this.matrix = this.make([n,m]);
+        this.dimCount = 2;
+      } else {
+        this.matrix = this.make([n,m,j]);
+        this.dimCount = 3;
+      }
+    }
+
+    get(n,m){
+      return this.matrix[n][m];
+    }
+
+    set(n,m,val){
+      this.matrix[n][m] = val;
+    }
+
+    row(n){
+      return this.matrix[n];
+    }
+
+    col(m){
+      var r = [];
+      for(var i=0; i<this.matrix.length; i++) {
+        r.push(this.matrix[i][m]);
+      }
+      return r;
+    }
+
+    make(dims){
+      var dim, ret = [];
+      if(dims.length === 1){
+        for(var i=0; i<dims[0]; i++) {
+          ret[i] = undefined;
+        }
+      } else {
+        var rest = dims.slice(1);
+        for (var i=0; i < dims[0]; i++) {
+          ret.push(this.make(rest));
+        }
+      }
+      return ret;
+    }
+  }
+
+  class GameBoard {
+    constructor() {
+      this.rowCount = 3;
+      this.colCount = 3;
+
+      this.xChar = "X";
+      this.oChar = "O";
+
+      this.currentState = new Matrix(this.rowCount, this.colCount);
+      var x,y;
+      for (x = 0; x < this.rowCount; ++x) {
+        for (y = 0; y < this.colCount; ++y) {
+          document.getElementById(x+'_'+y).classList.remove('win');
+        }
+      }
+    }
+
+    getState(){
+      var state = this.currentState;
+      var sg = state.get;
+      // top_left, top_m, top_right, right_m, right_bottom, bottom_m, bottom_left, left_m, middle
+      var stateArray = [sg(0,0),sg(0,1),sg(0,2),sg(1,2),sg(2,2),sg(2,1),sg(2,0),sg(1,0),sg(1,1)]
+      return stateArray;
+    }
+
+    getOpen(){
+      var x,y,empty = [];
+      for (x = 0; x < this.rowCount; ++x) {
+        for (y = 0; y < this.colCount; ++y) {
+          if(!this.currentState.get(x,y)){
+            empty.push([x,y]);
+          }
+        }
+      }
+      return empty;
+
+    }
+
+    markAs(x,y,char){
+      var marked = false;
+      if(!this.currentState.get(x,y)){
+        this.currentState.set(x,y,char);
+        marked = true;
+      }
+      return marked;
+    }
+    markAsX(x,y){
+      return this.markAs(x,y,this.xChar);
+    }
+
+    markAsO(x,y){
+      return this.markAs(x,y,this.oChar);
+    }
+
+    arrayEqual(theArray){
+      return !!theArray.reduce(function(a, b){ return (a === b) ? a : NaN; });
+    }
+
+    checkWin(){
+      var cells = [], x = 0, y = 0, win = false;
+      for (x = 0; x < this.rowCount; ++x) {
+        if(this.arrayEqual(this.currentState.row(x))){
+          return {win: true, cells:[[x,0],[x,1],[x,2]], winner: this.currentState.get(x,0)};
+        }
+      }
+
+      for (y = 0; y < this.colCount; ++y) {
+        if(this.arrayEqual(this.currentState.col(y))){
+          return {win: true, cells:[[0,y],[1,y],[2,y]], winner: this.currentState.get(0,y)};
+        }
+      }
+
+      var backslash = []
+      for (y = 0; y < this.colCount; ++y) {
+        backslash.push(this.currentState.get(y,y));
+      }
+      if(this.arrayEqual(backslash)){
+        return {win: true, cells:[[0,0],[1,1],[2,2]], winner: this.currentState.get(0,0)};
+      }
+
+      //0,2 1,1 2,0
+      var x = 0
+      var forwardslash = []
+      for (y = this.colCount-1; y >= 0; --y) {
+        forwardslash.push(this.currentState.get(x++,y));
+      }
+      if(this.arrayEqual(forwardslash)){
+        return {win: true, cells:[[0,2],[1,1],[2,0]], winner: this.currentState.get(2,2)};
+      }
+      return {win: false, cells:[], winner: undefined}
+    }
+
+    drawWin(cells){
+      for(var i = 0; i < cells.length; ++i){
+        document.getElementById(cells[i][0]+'_'+cells[i][1]).classList.add('win');
+      }
+    }
+
+    draw(board_id){
+      var x, y;
+      for (x = 0; x < this.rowCount; ++x) {
+          for (y = 0; y < this.colCount; ++y) {
+            document.getElementById(x+'_'+y).textContent = !this.currentState.get(x,y) ? "" : this.currentState.get(x,y);
+          }
+      }
+    }
+  }
+  var board, ai;
+
+  window.onload = function() {
+    board = new GameBoard();
+    ai = new AI('O', 200);
+    // board.draw();
+    var gameOver = function(){
+      var cols = document.getElementsByClassName("col");
+      for (var i = 0; i < cols.length; i++) {
+          cols[i].removeEventListener('click', mark, false);
+      }
+    };
+    var mark = function(e) {
+      var xy = e.target.id.split('_');
+      var x,y;
+      var marked = false;
+      x = parseInt(xy[0]);
+      y = parseInt(xy[1]);
+
+      if (xturn){
+        marked = board.markAsX(x,y)
+      } else {
+        marked = board.markAsO(x,y)
+      }
+      if(marked){
+        board.draw();
+        var w = board.checkWin();
+        if(w.win){
+          board.drawWin(w.cells);
+          gameOver();
+        } else{
+          // xturn = !xturn;
+          if(ai.move(board)){
+            gameOver();
+          }
+        }
+
+      }
+    };
+    var reset = function(e){
+      board = new GameBoard();
+      board.draw();
+      var cols = document.getElementsByClassName("col");
+      for (var i = 0; i < cols.length; i++) {
+          cols[i].addEventListener('click', mark, false);
+      }
+    };
+    var xturn = true;
+    var cols = document.getElementsByClassName("col");
+    for (var i = 0; i < cols.length; i++) {
+        cols[i].addEventListener('click', mark, false);
+    }
+    var resetButton = document.getElementById('reset_btn');
+    resetButton.addEventListener('click', reset, false);
+  };
+
+
+</script>
+</html>
